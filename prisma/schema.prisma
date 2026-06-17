@@ -1,0 +1,157 @@
+// ============================================================
+// AVANTE REPORTS PLATFORM - Prisma schema
+// Espejo del schema 'avante' en Supabase/PostgreSQL + perfiles RBAC.
+// ============================================================
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+  schemas   = ["avante", "public"]
+}
+
+model ReportDefinition {
+  id             Int          @id @default(autoincrement())
+  code           String       @unique @db.VarChar(50)
+  name           String       @db.VarChar(200)
+  description    String?
+  scriptPath     String       @map("script_path") @db.VarChar(500)
+  runtime        String       @db.VarChar(20)
+  timeoutMinutes Int?         @default(30) @map("timeout_minutes")
+  retryCount     Int?         @default(3) @map("retry_count")
+  retryDelaySec  Int?         @default(300) @map("retry_delay_sec")
+  active         Boolean?     @default(true)
+  ownerEmail     String?      @map("owner_email") @db.VarChar(200)
+  businessUnit   String?      @map("business_unit") @db.VarChar(50)
+  createdAt      DateTime?    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime?    @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  schedules    Schedule[]
+  recipients   Recipient[]
+  parameters   Parameter[]
+  dependencies Dependency[]
+  executions   Execution[]
+
+  @@map("report_definitions")
+  @@schema("avante")
+}
+
+model Schedule {
+  id             Int       @id @default(autoincrement())
+  reportId       Int?      @map("report_id")
+  cronExpression String    @map("cron_expression") @db.VarChar(100)
+  timezone       String?   @default("America/El_Salvador") @db.VarChar(50)
+  active         Boolean?  @default(true)
+  description    String?   @db.VarChar(200)
+  createdAt      DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  report ReportDefinition? @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@map("schedules")
+  @@schema("avante")
+}
+
+model Recipient {
+  id         Int      @id @default(autoincrement())
+  reportId   Int?     @map("report_id")
+  email      String   @db.VarChar(200)
+  type       String   @db.VarChar(10)
+  onlyInProd Boolean? @default(false) @map("only_in_prod")
+  fullName   String?  @map("full_name") @db.VarChar(200)
+  role       String?  @db.VarChar(100)
+  active     Boolean? @default(true)
+
+  report ReportDefinition? @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@unique([reportId, email, type])
+  @@map("recipients")
+  @@schema("avante")
+}
+
+model Parameter {
+  id          Int       @id @default(autoincrement())
+  reportId    Int?      @map("report_id")
+  paramKey    String    @map("param_key") @db.VarChar(100)
+  paramValue  String?   @map("param_value")
+  paramType   String?   @map("param_type") @db.VarChar(20)
+  description String?
+  isSecret    Boolean?  @default(false) @map("is_secret")
+  updatedAt   DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  report ReportDefinition? @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@unique([reportId, paramKey])
+  @@map("parameters")
+  @@schema("avante")
+}
+
+model Dependency {
+  id         Int      @id @default(autoincrement())
+  reportId   Int?     @map("report_id")
+  depType    String?  @map("dep_type") @db.VarChar(20)
+  depName    String   @map("dep_name") @db.VarChar(100)
+  depVersion String?  @map("dep_version") @db.VarChar(50)
+  optional   Boolean? @default(false)
+  purpose    String?  @db.VarChar(200)
+
+  report ReportDefinition? @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@map("dependencies")
+  @@schema("avante")
+}
+
+model Execution {
+  id            BigInt    @id @default(autoincrement())
+  reportId      Int?      @map("report_id")
+  triggeredBy   String?   @default("scheduler") @map("triggered_by") @db.VarChar(50)
+  startedAt     DateTime  @default(now()) @map("started_at") @db.Timestamptz(6)
+  finishedAt    DateTime? @map("finished_at") @db.Timestamptz(6)
+  status        String?   @db.VarChar(20)
+  durationSec   Int?      @map("duration_sec")
+  rowsProcessed Int?      @map("rows_processed")
+  emailsSent    Int?      @map("emails_sent")
+  errorMessage  String?   @map("error_message")
+  stackTrace    String?   @map("stack_trace")
+  outputFiles   Json?     @map("output_files")
+  workerNode    String?   @map("worker_node") @db.VarChar(100)
+  memoryPeakMb  Int?      @map("memory_peak_mb")
+
+  report ReportDefinition? @relation(fields: [reportId], references: [id])
+
+  @@index([reportId, startedAt(sort: Desc)], map: "idx_executions_report_date")
+  @@index([status], map: "idx_executions_status")
+  @@map("executions")
+  @@schema("avante")
+}
+
+model AuditLog {
+  id         BigInt    @id @default(autoincrement())
+  tableName  String    @map("table_name") @db.VarChar(50)
+  recordId   Int?      @map("record_id")
+  action     String?   @db.VarChar(20)
+  changedBy  String?   @map("changed_by") @db.VarChar(100)
+  changedAt  DateTime? @default(now()) @map("changed_at") @db.Timestamptz(6)
+  oldValues  Json?     @map("old_values")
+  newValues  Json?     @map("new_values")
+
+  @@map("audit_log")
+  @@schema("avante")
+}
+
+model Profile {
+  id        String    @id @db.Uuid
+  email     String    @db.VarChar(200)
+  fullName  String?   @map("full_name") @db.VarChar(200)
+  role      String    @default("viewer") @db.VarChar(20)
+  active    Boolean?  @default(true)
+  createdAt DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("profiles")
+  @@schema("public")
+}
