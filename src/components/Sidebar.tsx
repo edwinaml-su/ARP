@@ -12,7 +12,7 @@ import {
   ShieldCheck,
   UserCog,
 } from "lucide-react";
-import type { Role } from "@/lib/auth";
+import type { Role } from "@/lib/roles";
 
 const NAV = [
   { href: "/dashboard", label: "Panel", icon: LayoutDashboard },

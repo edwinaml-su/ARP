@@ -2,7 +2,7 @@
 
 import { LogOut } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { ROLE_LABELS, type Role } from "@/lib/auth";
+import { ROLE_LABELS, type Role } from "@/lib/roles";
 
 const ROLE_CLS: Record<Role, string> = {
   admin: "bg-avante-accent text-white",

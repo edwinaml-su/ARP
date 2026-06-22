@@ -1,8 +1,11 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { type Role, ROLE_LABELS } from "@/lib/roles";
 
-export type Role = "admin" | "editor" | "viewer";
+// Re-exportar para compatibilidad con imports existentes
+export type { Role };
+export { ROLE_LABELS };
 
 export interface SessionUser {
   id: string;
@@ -10,12 +13,6 @@ export interface SessionUser {
   fullName: string | null;
   role: Role;
 }
-
-export const ROLE_LABELS: Record<Role, string> = {
-  admin: "Administrador",
-  editor: "Editor",
-  viewer: "Lector",
-};
 
 export function canEdit(role: Role): boolean {
   return role === "admin" || role === "editor";
