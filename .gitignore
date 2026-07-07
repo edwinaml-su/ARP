@@ -39,3 +39,6 @@ _rt_test.txt
 
 # documentacion confidencial (no publicar)
 /docs/
+
+# claude code
+/.claude/
