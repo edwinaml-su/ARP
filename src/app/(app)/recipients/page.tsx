@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireUser, canEdit } from "@/lib/auth";
 import { InlineToggle, DeleteButton } from "@/components/actions";
+import { AddRecipients } from "@/components/forms";
 import { TypeBadge } from "@/components/StatusBadge";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +19,7 @@ export default async function RecipientsPage() {
   const user = await requireUser();
   const editable = canEdit(user.role);
 
-  const [matrix, recipients] = await Promise.all([
+  const [matrix, recipients, reports] = await Promise.all([
     prisma.$queryRawUnsafe<MatrixRow[]>(
       "SELECT email, full_name, role, reports_received::int AS reports_received, report_codes FROM avante.v_recipients_matrix"
     ),
@@ -26,10 +27,15 @@ export default async function RecipientsPage() {
       orderBy: [{ reportId: "asc" }, { type: "asc" }],
       include: { report: { select: { id: true, name: true } } },
     }),
+    prisma.reportDefinition.findMany({
+      select: { id: true, name: true, code: true },
+      orderBy: { code: "asc" },
+    }),
   ]);
 
   return (
     <div className="space-y-6">
+      {editable && <AddRecipients reports={reports} />}
       <div className="card overflow-hidden">
         <div className="border-b border-slate-200 px-5 py-4">
           <h2 className="text-base font-bold text-slate-900">

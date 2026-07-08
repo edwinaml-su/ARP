@@ -158,6 +158,164 @@ export function AddRecipient({ reportId }: { reportId: number }) {
   );
 }
 
+export function AddRecipients({
+  reports,
+}: {
+  reports: { id: number; name: string; code: string }[];
+}) {
+  const s = useAdd();
+  const [reportId, setReportId] = useState("");
+  const [to, setTo] = useState("");
+  const [cc, setCc] = useState("");
+  const [bcc, setBcc] = useState("");
+  const [onlyProd, setOnlyProd] = useState(false);
+  const [okMsg, setOkMsg] = useState<string | null>(null);
+
+  const parse = (v: string) =>
+    Array.from(
+      new Set(
+        v
+          .split(/[\s,;]+/)
+          .map((x) => x.trim())
+          .filter(Boolean)
+      )
+    );
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setOkMsg(null);
+    s.setErr(null);
+    if (!reportId) {
+      s.setErr("Selecciona un reporte");
+      return;
+    }
+    const items = [
+      ...parse(to).map((email) => ({ email, type: "TO" })),
+      ...parse(cc).map((email) => ({ email, type: "CC" })),
+      ...parse(bcc).map((email) => ({ email, type: "BCC" })),
+    ];
+    if (!items.length) {
+      s.setErr("Ingresa al menos un correo en TO, CC o BCC");
+      return;
+    }
+    const invalid = items.find((i) => !i.email.includes("@"));
+    if (invalid) {
+      s.setErr(`Correo invalido: ${invalid.email}`);
+      return;
+    }
+    s.setBusy(true);
+    try {
+      const res = await post("/api/recipients", {
+        reportId: Number(reportId),
+        onlyInProd: onlyProd,
+        items,
+      });
+      setTo("");
+      setCc("");
+      setBcc("");
+      setOnlyProd(false);
+      const skipped = res.skipped
+        ? `, ${res.skipped} omitido(s) por duplicado`
+        : "";
+      setOkMsg(`${res.created} destinatario(s) agregado(s)${skipped}.`);
+      s.router.refresh();
+    } catch (e) {
+      s.setErr(e instanceof Error ? e.message : "Error");
+    } finally {
+      s.setBusy(false);
+    }
+  }
+
+  if (!s.open)
+    return (
+      <div className="card px-5 py-4">
+        <button onClick={() => s.setOpen(true)} className="btn-primary text-sm">
+          <Plus size={16} /> Agregar destinatarios
+        </button>
+      </div>
+    );
+
+  return (
+    <form onSubmit={submit} className="card space-y-4 p-5">
+      <div className="flex items-center justify-between">
+        <h2 className="text-base font-bold text-slate-900">Agregar destinatarios</h2>
+        <button
+          type="button"
+          className="btn-ghost text-xs"
+          onClick={() => s.setOpen(false)}
+        >
+          Cerrar
+        </button>
+      </div>
+      <div className="grid gap-4 md:grid-cols-2">
+        <div>
+          <label className="label">Reporte</label>
+          <select
+            className="input"
+            value={reportId}
+            onChange={(e) => setReportId(e.target.value)}
+            required
+          >
+            <option value="">— Selecciona un reporte —</option>
+            {reports.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.code} — {r.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <label className="flex items-end gap-2 pb-2 text-xs text-slate-600">
+          <input
+            type="checkbox"
+            checked={onlyProd}
+            onChange={(e) => setOnlyProd(e.target.checked)}
+          />
+          Enviar solo en produccion
+        </label>
+      </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        <div>
+          <label className="label">TO (para)</label>
+          <textarea
+            className="input h-24 resize-y font-mono text-xs"
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+            placeholder="uno@complejoavante.com, dos@complejoavante.com"
+          />
+        </div>
+        <div>
+          <label className="label">CC (copia)</label>
+          <textarea
+            className="input h-24 resize-y font-mono text-xs"
+            value={cc}
+            onChange={(e) => setCc(e.target.value)}
+            placeholder="opcional"
+          />
+        </div>
+        <div>
+          <label className="label">BCC (copia oculta)</label>
+          <textarea
+            className="input h-24 resize-y font-mono text-xs"
+            value={bcc}
+            onChange={(e) => setBcc(e.target.value)}
+            placeholder="opcional"
+          />
+        </div>
+      </div>
+      <p className="text-xs text-slate-400">
+        Puedes poner varios correos por campo, separados por coma, espacio o salto de linea.
+      </p>
+      <div className="flex flex-wrap items-center gap-3">
+        <button className="btn-primary" disabled={s.busy}>
+          {s.busy && <Loader2 size={14} className="animate-spin" />} Guardar destinatarios
+        </button>
+        {s.err && <p className="text-xs text-avante-accent">{s.err}</p>}
+        {okMsg && <p className="text-xs text-emerald-600">{okMsg}</p>}
+      </div>
+    </form>
+  );
+}
+
 export function AddParameter({ reportId }: { reportId: number }) {
   const s = useAdd();
   const [key, setKey] = useState("");
