@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus, Loader2, KeyRound, Check, X } from "lucide-react";
 
 async function post(url: string, body: unknown) {
   const res = await fetch(url, {
@@ -426,5 +426,141 @@ export function RoleSelect({
       <option value="editor">Editor</option>
       <option value="viewer">Lector</option>
     </select>
+  );
+}
+
+export function AddUser() {
+  const s = useAdd();
+  const [email, setEmail] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [password, setPassword] = useState("");
+  const [role, setRole] = useState("viewer");
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    s.setBusy(true);
+    s.setErr(null);
+    try {
+      await post("/api/users", { email, fullName, password, role });
+      setEmail("");
+      setFullName("");
+      setPassword("");
+      setRole("viewer");
+      s.setOpen(false);
+      s.router.refresh();
+    } catch (e) {
+      s.setErr(e instanceof Error ? e.message : "Error");
+    } finally {
+      s.setBusy(false);
+    }
+  }
+
+  if (!s.open)
+    return (
+      <button onClick={() => s.setOpen(true)} className="btn-primary text-sm">
+        <Plus size={16} /> Agregar usuario
+      </button>
+    );
+
+  return (
+    <form onSubmit={submit} className="flex flex-wrap items-end gap-2 rounded-lg bg-slate-50 p-3">
+      <div className="flex-1">
+        <label className="label">Correo</label>
+        <input type="email" className="input" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="usuario@complejoavante.com" required />
+      </div>
+      <div>
+        <label className="label">Nombre</label>
+        <input className="input w-44" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Nombre completo" />
+      </div>
+      <div>
+        <label className="label">Contrasena</label>
+        <input type="password" className="input w-40" value={password} onChange={(e) => setPassword(e.target.value)} minLength={6} placeholder="Minimo 6" required />
+      </div>
+      <div>
+        <label className="label">Rol</label>
+        <select className="input w-36" value={role} onChange={(e) => setRole(e.target.value)}>
+          <option value="admin">Administrador</option>
+          <option value="editor">Editor</option>
+          <option value="viewer">Lector</option>
+        </select>
+      </div>
+      <button className="btn-primary" disabled={s.busy}>
+        {s.busy && <Loader2 size={14} className="animate-spin" />} Crear
+      </button>
+      <button type="button" className="btn-ghost" onClick={() => s.setOpen(false)}>Cancelar</button>
+      {s.err && <p className="w-full text-xs text-avante-accent">{s.err}</p>}
+    </form>
+  );
+}
+
+export function SetPassword({ id, email }: { id: string; email: string }) {
+  const [open, setOpen] = useState(false);
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setErr(null);
+    try {
+      const res = await fetch(`/api/users/${id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error || "Error");
+      }
+      setPassword("");
+      setOpen(false);
+      setDone(true);
+      setTimeout(() => setDone(false), 3000);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Error");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!open)
+    return (
+      <button onClick={() => setOpen(true)} className="btn-ghost text-xs" title={`Cambiar contrasena de ${email}`}>
+        <KeyRound size={14} /> Contrasena
+        {done && <Check size={14} className="text-emerald-600" />}
+      </button>
+    );
+
+  return (
+    <form onSubmit={submit} className="flex items-center gap-1.5">
+      <input
+        type="password"
+        className="input w-40"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        minLength={6}
+        placeholder="Nueva contrasena"
+        autoFocus
+        required
+      />
+      <button className="btn-primary px-2" disabled={busy} title="Guardar">
+        {busy ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+      </button>
+      <button
+        type="button"
+        className="btn-ghost px-2"
+        onClick={() => {
+          setOpen(false);
+          setPassword("");
+          setErr(null);
+        }}
+        title="Cancelar"
+      >
+        <X size={14} />
+      </button>
+      {err && <p className="text-xs text-avante-accent">{err}</p>}
+    </form>
   );
 }

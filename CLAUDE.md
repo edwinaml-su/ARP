@@ -47,7 +47,8 @@ src/
       schedules/        # CRUD horarios
       recipients/       # CRUD destinatarios
       parameters/       # CRUD parámetros
-      users/[id]/       # PATCH → cambiar rol / activo (solo admin)
+      users/            # POST → crear usuario (Auth + perfil, solo admin)
+      users/[id]/       # PATCH → cambiar rol / activo / contraseña (solo admin)
     auth/
       callback/         # Callback OAuth Supabase
       signout/          # Sign out
@@ -59,7 +60,7 @@ src/
     StatusBadge.tsx     # Badges: estado ejecución, activo/inactivo, tipo destinatario
     RunButton.tsx       # Botón "Ejecutar ahora" (client component)
     actions.tsx         # InlineToggle, DeleteButton, EditableValue
-    forms.tsx           # AddSchedule, AddRecipient, AddParameter, RoleSelect
+    forms.tsx           # AddSchedule, AddRecipient, AddParameter, RoleSelect, AddUser, SetPassword
   lib/
     auth.ts             # requireUser(), requireRole(), canEdit(), getSessionUser()
     api-auth.ts         # apiGuard() para API routes
@@ -120,6 +121,7 @@ docs/
 |---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | `https://dmacokzcfpjpoqxksoyw.supabase.co` (ya configurada) |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Llave publishable Supabase (ya configurada) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Llave **service_role** (SECRETA, solo servidor) — requerida por `/users` para crear usuarios y cambiar contraseñas |
 | `DATABASE_URL` | Conexión Prisma pooler (puerto 6543) — **requiere contraseña real** |
 | `DIRECT_URL` | Conexión directa (puerto 5432) — **requiere contraseña real** |
 | `WORKER_WEBHOOK_URL` | *(opcional)* Endpoint del worker externo |
